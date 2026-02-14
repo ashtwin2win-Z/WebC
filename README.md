@@ -1,4 +1,9 @@
-# **WebC – Treat Websites as Python Objects**
+<h1 align="center">WebC – Treat Websites as Python Objects</h1>
+
+
+<p align="center">
+  <img src="assets/webc.png" alt="WebC Logo" width="280">
+</p>
 
 **Version:** 0.1.0
 **Author:** Ashwin Prasanth
