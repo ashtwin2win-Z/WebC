@@ -1,0 +1,8 @@
+[project]
+name = "webc"
+version = "0.1.0"
+description = "Treat websites as programmable resources"
+dependencies = [
+    "requests",
+    "beautifulsoup4"
+]
