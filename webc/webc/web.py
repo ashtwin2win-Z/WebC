@@ -2,18 +2,21 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import time
-import requests
+import pandas as pd
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import csv
+import re
 
+# =========================
+# Image Handling
+# =========================
 class ImageCollection(list):
     def __init__(self, urls, base_url=None):
         super().__init__(urls)
-        self.base_url = base_url  # for resolving relative URLs
+        self.base_url = base_url
 
     def save_images(self, folder="images", overwrite=False, delay=0.5):
-        """
-        Download all images in this collection to a folder.
-        delay: seconds to wait between downloads (default 0.5s)
-        """
         os.makedirs(folder, exist_ok=True)
         saved_files = []
 
@@ -22,15 +25,13 @@ class ImageCollection(list):
             if url.startswith("//"):
                 url = "https:" + url
             elif url.startswith("/"):
-                url = "https://en.wikipedia.org" + url
+                url = self.base_url.rstrip("/") + url if self.base_url else url
             elif url.startswith("http"):
                 pass
             else:
-                # relative to page URL
                 if self.base_url:
                     url = self.base_url.rstrip("/") + "/" + url
 
-            # Determine local filename
             ext = os.path.splitext(url)[-1].split("?")[0] or ".jpg"
             filename = os.path.join(folder, f"image_{i+1}{ext}")
 
@@ -39,7 +40,7 @@ class ImageCollection(list):
                 continue
 
             try:
-                resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+                resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
                 resp.raise_for_status()
                 with open(filename, "wb") as f:
                     f.write(resp.content)
@@ -51,11 +52,12 @@ class ImageCollection(list):
 
         return saved_files
 
-
+# =========================
+# Core Web Resource
+# =========================
 class Web:
     def __getitem__(self, url: str):
         return Resource(url)
-
 
 web = Web()
 
@@ -63,31 +65,38 @@ class Resource:
     def __init__(self, url: str):
         self.url = url
         self._html = None
-
         self.structure = StructuredView(self)
         self.query = QueryView(self)
-        self.task = TaskView(self)
+        self.session = requests.Session()
+        # ... (keep your retry logic)
 
     @property
     def html(self):
         if self._html is None:
             headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/114.0.0.0 Safari/537.36"
-        }
-
-            response = requests.get(self.url, headers=headers)
-            response.raise_for_status()
-            self._html = response.text
+    "User-Agent": "MyScraperProject/1.0 (https://github.com/AshwinPrasanth/Webc; educational use)",
+    "Accept-Encoding": "gzip"
+}
+            try:
+                # IMPORTANT: Slow down. Spaming requests triggers the 403 block.
+                time.sleep(2.0) 
+                response = self.session.get(self.url, headers=headers, timeout=15)
+                response.raise_for_status()
+                self._html = response.text
+            except Exception as e:
+                print(f"Fetch failed: {e}")
+                return ""
         return self._html
 
     @property
     def soup(self):
         return BeautifulSoup(self.html, "html.parser")
-    
+
+# =========================
+# Structured View (Title, Links, Images, Tables)
+# =========================
 class StructuredView:
-    def __init__(self, resource: 'Resource'):
+    def __init__(self, resource: Resource):
         self.resource = resource
 
     @property
@@ -101,29 +110,135 @@ class StructuredView:
 
     @property
     def images(self):
-        """
-        Return ImageCollection of main content images only (avoid nav/footer).
-        """
-        # Grab images only inside the article/main content
-        content_imgs = self.resource.soup.select("#content img")
-        urls = [img.get("src") for img in content_imgs if img.get("src")]
-        return ImageCollection(urls, base_url=self.resource.url)
+        content_area = self.resource.soup.find(id="bodyContent") or self.resource.soup
+        
+        # 1. Collect every <img> tag
+        all_tags = content_area.find_all("img")
+        
+        # 2. Collect every <img> hidden in <noscript>
+        for noscript in content_area.find_all("noscript"):
+            ns_soup = BeautifulSoup(noscript.text, "html.parser")
+            all_tags.extend(ns_soup.find_all("img"))
+        
+        urls = []
+        for img in all_tags:
+            # Check srcset for high-res first, then data-src, then src
+            src = None
+            srcset = img.get("srcset")
+            if srcset:
+                # Get the highest quality link (usually at the end of the list)
+                src = srcset.split(",")[-1].strip().split(" ")[0]
+            
+            if not src:
+                src = img.get("data-src") or img.get("src")
 
-    def save_images(self, folder="images", overwrite=False, delay=0.5):
-        """Shortcut: download all main content images"""
-        return self.images.save_images(folder=folder, overwrite=overwrite, delay=delay)
+            if not src: continue
 
+            # Fix protocol
+            if src.startswith("//"): src = "https:" + src
+            elif src.startswith("/"): src = "https://en.wikipedia.org" + src
+
+            # Only block the absolute junk (SVGs and UI icons)
+            if any(x in src.lower() for x in [".svg", "/static/images/"]):
+                continue
+
+            urls.append(src)
+            
+        unique_urls = list(dict.fromkeys(urls))
+        print(f"Found {len(unique_urls)} potential images. Starting download...")
+        return ImageCollection(unique_urls, base_url=self.resource.url)
+
+    def save_images(self, folder="images", overwrite=False):
+        os.makedirs(folder, exist_ok=True)
+        image_list = self.images  
+        saved_files = []
+
+        for i, url in enumerate(image_list):
+            # Resolve extension
+            ext = os.path.splitext(url)[-1].split("?")[0].lower()
+            if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+                ext = ".jpg"
+
+            # CRITICAL: Unique filename per index
+            filename = os.path.join(folder, f"image_{i+1}{ext}")
+
+            try:
+                # Add a 1s delay to avoid being blocked mid-download
+                time.sleep(1.0)
+                headers = {"User-Agent": "Mozilla/5.0"}
+                resp = requests.get(url, headers=headers, timeout=10)
+                resp.raise_for_status()
+                
+                with open(filename, "wb") as f:
+                    f.write(resp.content)
+                saved_files.append(filename)
+                print(f"Saved: {filename}")
+            except Exception as e:
+                print(f"Failed {url}: {e}")
+
+        return saved_files
+
+    @property
+
+    def tables(self):
+        """Manually extracts tables to handle complex HTML structures."""
+        extracted_tables = []
+        
+        # Target 'wikitable' for Wikipedia to filter out navigation menus
+        if "wikipedia.org" in self.resource.url:
+            content_tables = self.resource.soup.find_all("table", class_="wikitable")
+        else:
+            content_tables = self.resource.soup.find_all("table")
+
+        for table in content_tables:
+            # 1. Try to find a title/caption for the table
+            caption = table.find('caption')
+            table_name = caption.get_text(strip=True) if caption else None
+            
+            # 2. Extract rows and cells
+            table_data = []
+            for row in table.find_all('tr'):
+                cells = row.find_all(['td', 'th'])
+                # Clean text and remove citation brackets like [1]
+                clean_cells = [re.sub(r'\[.*?\]', '', cell.get_text(strip=True)) for cell in cells]
+                if clean_cells:
+                    table_data.append(clean_cells)
+            
+            if table_data:
+                extracted_tables.append({
+                    "name": table_name,
+                    "data": table_data
+                })
+        return extracted_tables
+
+    def save_tables(self, folder="tables"):
+        os.makedirs(folder, exist_ok=True)
+        table_list = self.tables 
+        saved_files = []
+
+        for i, table_obj in enumerate(table_list, start=1):
+            # Use caption for filename if it exists, otherwise use the index
+            raw_name = table_obj["name"] if table_obj["name"] else f"table_{i}"
+            # Sanitize filename (remove spaces and special characters)
+            clean_name = re.sub(r'[^\w\-_\. ]', '_', raw_name).replace(' ', '_')
+            filename = os.path.join(folder, f"{clean_name}.csv")
+            
+            try:
+                with open(filename, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerows(table_obj["data"])
+                saved_files.append(filename)
+            except Exception as e:
+                print(f"Error saving {filename}: {e}")
+                
+        return saved_files
+
+# =========================
+# Query View
+# =========================
 class QueryView:
     def __init__(self, resource: Resource):
         self.resource = resource
 
     def __getitem__(self, selector: str):
         return self.resource.soup.select(selector)
-
-class TaskView:
-    def __init__(self, resource: Resource):
-        self.resource = resource
-
-    def summarize(self, max_chars: int = 500):
-        text = self.resource.soup.get_text(separator=" ", strip=True)
-        return text[:max_chars] + "..." if len(text) > max_chars else text
