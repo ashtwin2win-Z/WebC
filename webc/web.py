@@ -61,7 +61,7 @@ class Web:
         # 1. Identity Layer: Unique Machine ID protects you from global bans
         machine_id = hex(uuid.getnode())[-6:]
         version = "0.1.1"
-        project_home = "https://github.com/AshwinPrasanth/Webc"
+        project_home = "https://github.com/ashtwin2win-Z/WebC"
         
         # Professional User-Agent string
         ua = f"WebC/{version} (User: {contact or 'Anonymous'}; ID:{machine_id}; +{project_home})"
