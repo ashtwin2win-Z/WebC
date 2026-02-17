@@ -8,5 +8,5 @@ print(f"Found {len(images)} main content images")
 print(images[:5])
 
 # Save images safely
-saved_files = site.structure.save_images(folder="python_images")
+saved_files = site.structure.save_images(folder="audi_images")
 print(f"Saved {len(saved_files)} images locally")
