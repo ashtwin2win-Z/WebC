@@ -181,34 +181,42 @@ class StructuredView:
     @property
 
     def tables(self):
-        """Manually extracts tables to handle complex HTML structures."""
         extracted_tables = []
-        
-        # Target 'wikitable' for Wikipedia to filter out navigation menus
-        if "wikipedia.org" in self.resource.url:
-            content_tables = self.resource.soup.find_all("table", class_="wikitable")
-        else:
-            content_tables = self.resource.soup.find_all("table")
-
+        content_tables = self.resource.soup.find_all("table", class_="wikitable")
         for table in content_tables:
-            # 1. Try to find a title/caption for the table
-            caption = table.find('caption')
-            table_name = caption.get_text(strip=True) if caption else None
-            
-            # 2. Extract rows and cells
-            table_data = []
-            for row in table.find_all('tr'):
+            rows = table.find_all('tr')
+            # Map out the grid (rows x columns)
+            grid = {} 
+            for r_idx, row in enumerate(rows):
                 cells = row.find_all(['td', 'th'])
-                # Clean text and remove citation brackets like [1]
-                clean_cells = [re.sub(r'\[.*?\]', '', cell.get_text(strip=True)) for cell in cells]
-                if clean_cells:
-                    table_data.append(clean_cells)
-            
-            if table_data:
-                extracted_tables.append({
-                    "name": table_name,
-                    "data": table_data
-                })
+                c_idx = 0
+                for cell in cells:
+                    # Find the next empty slot in the grid for this row
+                    while (r_idx, c_idx) in grid:
+                        c_idx += 1
+                
+                    # Get cell properties
+                    text = re.sub(r'\[.*?\]', '', cell.get_text(strip=True))
+                    rowspan = int(cell.get('rowspan', 1))
+                    colspan = int(cell.get('colspan', 1))
+
+                    # Fill the grid for all covered spans
+                    for r in range(r_idx, r_idx + rowspan):
+                        for c in range(c_idx, c_idx + colspan):
+                            grid[(r, c)] = text
+                    c_idx += colspan
+
+            # Convert the grid dictionary back into a list of lists
+            max_r = max(key[0] for key in grid.keys()) + 1 if grid else 0
+            max_c = max(key[1] for key in grid.keys()) + 1 if grid else 0
+        
+            table_data = []
+            for r in range(max_r):
+                row_data = [grid.get((r, c), "") for c in range(max_c)]
+                table_data.append(row_data)
+
+            extracted_tables.append({"name": table.find('caption').get_text(strip=True) if table.find('caption') else None,
+            "data": table_data})
         return extracted_tables
 
     def save_tables(self, folder="tables"):
