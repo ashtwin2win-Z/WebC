@@ -1,7 +1,7 @@
 <h1 align="center">WebC – Treat Websites as Python Objects</h1>
 
 <p align="center">
-<img src="assets/webc.png" alt="WebC Logo" width="280">
+<img src="https://raw.githubusercontent.com/ashtwin2win-Z/WebC/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
 **Version:** 0.1.1
@@ -17,7 +17,7 @@ It provides a clean abstraction to access **semantic content**, **query elements
 Install `webc` locally (editable mode):
 
 ```bash
-pip install -e .
+pip install webc
 
 ```
 
