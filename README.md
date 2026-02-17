@@ -1,7 +1,7 @@
 <h1 align="center">WebC – Treat Websites as Python Objects</h1>
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/ashtwin2win-Z/WebC/assets/webc.png" alt="WebC Logo" width="280">
+<img src="https://github.com/ashtwin2win-Z/WebC/raw/main/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
 **Version:** 0.1.1
@@ -155,30 +155,6 @@ site.structure.save_tables(folder="python_data")
 # --- Task Layer ---
 summary = site.task.summarize(max_chars=500)
 print("Summary:", summary)
-
-```
-
----
-
-## **Technical Notes**
-
-* Uses `requests` with a **browser-like User-Agent** and custom headers to avoid 403 errors.
-* Employs **Regex** to strip Wikipedia-style citations and "edit" tags from extracted text.
-* Uses `BeautifulSoup` with the `"html.parser"` backend.
-* Extensible: you can add more semantic helpers or tasks easily.
-
----
-
-## **Directory Structure**
-
-```
-webc/
-│
-├── webc/
-│   ├── __init__.py        # Entry point: from webc import web
-│   ├── web.py             # Core classes: Web, Resource, StructuredView, QueryView, TaskView, ImageCollection
-│
-└── pyproject.toml         # Project metadata and dependencies
 
 ```
 
