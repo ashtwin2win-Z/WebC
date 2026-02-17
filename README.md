@@ -4,7 +4,7 @@
 <img src="https://github.com/ashtwin2win-Z/WebC/raw/main/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
-**Version:** 0.1.1.dev1
+**Version:** 0.1.1
 **Author:** Ashwin Prasanth
 
 ---
@@ -25,7 +25,7 @@ The goal is simple:
 
 ## ⚠️ Developer Preview / Secure Beta
 
-**WebC v0.1.1.dev1** is a developer preview release intended for testing and feedback.
+**WebC v0.1.1** is a developer preview release intended for testing and feedback.
 
 This version prioritizes security, architecture stability, and controlled usage.
 
