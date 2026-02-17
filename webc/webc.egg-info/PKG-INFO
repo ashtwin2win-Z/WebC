@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: webc
-Version: 0.1.0
-Summary: Treat websites as programmable resources
-Requires-Dist: requests
-Requires-Dist: beautifulsoup4

@@ -1,8 +1,0 @@
-pyproject.toml
-webc/__init__.py
-webc/web.py
-webc.egg-info/PKG-INFO
-webc.egg-info/SOURCES.txt
-webc.egg-info/dependency_links.txt
-webc.egg-info/requires.txt
-webc.egg-info/top_level.txt
