@@ -30,7 +30,7 @@ Dependencies:
 
 ## **Core Concepts**
 
-WebC revolves around **three main layers**:
+WebC revolves around **four main layers**:
 
 ### 1. **Resource Layer**
 
