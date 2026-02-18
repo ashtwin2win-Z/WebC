@@ -229,5 +229,6 @@ Planned future improvements:
 
 ## License
 
-MIT License
-© Ashwin Prasanth
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for the full license text.
+
+© 2026 Ashwin Prasanth
