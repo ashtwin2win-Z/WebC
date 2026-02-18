@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webc"
-version = "0.1.1" 
+version = "0.1.2" 
 description = "Treat websites as programmable objects (Wikipedia-Locked Beta)"
 readme = "README.md"
 requires-python = ">=3.7"
 authors = [
     {name = "Ashwin Prasanth"}
 ]
-license = {text = "MIT"}
-keywords = ["web", "scraper", "automation", "wikipedia", "resource"]
+license = {file = "LICENSE"}
+keywords = ["web", "scraper", "automation", "resource"]
 dependencies = [
     "requests>=2.28.0",
     "beautifulsoup4>=4.11.0"
