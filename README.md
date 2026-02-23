@@ -4,7 +4,7 @@
 <img src="https://github.com/ashtwin2win-Z/WebC/raw/main/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
-**Version:** 0.1.1
+**Version:** 0.2.0
 **Author:** Ashwin Prasanth
 
 ---
@@ -23,13 +23,73 @@ The goal is simple:
 
 ---
 
-## ⚠️ Developer Preview / Secure Beta
+## 🚀 New Release – v0.2.0 (The Unlocked Release)
 
-**WebC v0.1.1** is a developer preview release intended for testing and feedback.
+WebC v0.2.0 marks a major architectural milestone.
 
-This version prioritizes security, architecture stability, and controlled usage.
+### Global Access
 
-APIs may change during the beta phase.
+* Wikipedia-only restriction removed
+* Supports **any HTTPS domain**
+* Domain-agnostic resource abstraction
+
+### TaskView 2.0
+
+* `summarize(max_chars=500, refine=True)`
+* Adjustable summary length
+* Optional refinement to remove citation noise and formatting artifacts
+* Intelligent fallback behavior when structured content is limited
+
+### Foundation for WebSoc (Beta)
+
+> **Disclaimer ⚠️:** WebSoc is currently in beta. Use only for research, educational, or personal automation purposes. Do not use for mass scraping, commercial exploitation or violating platform Terms of Service. Users are responsible for complying with website Terms of Service.
+
+* Core engine now supports expansion into social platforms
+* Designed to extract structured metadata from complex layouts
+* Introduction of the first WebSoc module in beta testing
+
+#### Websoc is a beta version: ⚠️ Metadata may still contain noise in this beta release.
+* Current beta provides structured previews, engagement metrics, and object-based access.
+* Future versions will include refined outputs, noise filtering, and expanded platform coverage.
+
+### Websoc usecase
+
+```python
+from webc.websoc import social
+
+# Initialize a WebSoc object for a public video URL.
+# This securely fetches and parses the page.
+# Note: WebSoc is currently in BETA; metadata may contain noise.
+url = "https://www.youtube.com/watch?v=VIDEO_ID"  # Beta example: YouTube video URL for testing
+video = social[url]
+
+# --- Basic Identity ---
+# Returns a lightweight preview dictionary (e.g., cleaned title).
+print("Video Title:", video.preview["title"])
+
+# Extracts the canonical video ID from the URL.
+print("Video ID:", video.video_id)
+
+# --- Engagement Metrics ---
+# Returns a structured dictionary containing engagement data.
+# Example keys: "views", "likes", "metadata"
+print("Views:", video.metrics.get("views"))   # Total view count
+print("Likes:", video.metrics.get("likes"))   # Total like count
+
+# --- Extended Metadata (Optional) ---
+# Returns a decoded metadata block if available.
+# In this beta, metadata may still contain noise (unwanted text fragments).
+print("Full Metadata & Credits:", video.metrics.get("metadata"))
+```
+
+
+### Centralized Security Maintained
+
+* Mandatory HTTPS enforcement
+* SSRF protection
+* Restricted internal network access
+* Safe file handling
+* Controlled request behavior
 
 ---
 
@@ -61,7 +121,7 @@ Access a webpage as a `Resource` object:
 ```python
 from webc import web
 
-site = web["https://en.wikipedia.org/wiki/Python_(programming_language)"]
+site = web["https://example.com"]
 ```
 
 * Represents a single webpage
@@ -90,19 +150,19 @@ site.structure.tables
 Download images:
 
 ```python
-site.structure.save_images(folder="python_images")
+site.structure.save_images(folder="images")
 ```
 
 #### Table Extraction
 
-* Detects Wikipedia `wikitable` tables
+* Detects structured HTML tables
 * Handles rowspan and colspan alignment
-* Removes citation brackets (e.g., `[1]`)
+* Removes citation brackets (e.g., `[1]`) where applicable
 
 Save tables as CSV:
 
 ```python
-site.structure.save_tables(folder="wiki_data")
+site.structure.save_tables(folder="data")
 ```
 
 ---
@@ -124,31 +184,33 @@ for h in headings:
 
 ---
 
-### 4. Task Layer
+### 4. Task Layer (TaskView 2.0)
 
 Provides intent-driven actions:
 
 ```python
-summary = site.task.summarize(max_chars=500)
+summary = site.task.summarize(max_chars=500, refine=True)
 print(summary)
 ```
 
 Currently supported:
 
-* `summarize(max_chars=500)`
+* `summarize(max_chars=500, refine=True)`
 
-More tasks will be introduced in future releases.
+More intelligent tasks will be introduced in future releases.
 
 ---
 
 ## Security & Usage Policy
 
-This secure beta is intentionally restricted.
+WebC is built with security-first defaults.
 
-### Platform Restrictions
+### Platform Rules
 
-* Locked to **Wikipedia.org only**
 * Only **HTTPS URLs** are allowed
+* Private and internal network addresses are blocked
+* No login bypass mechanisms
+* No CAPTCHA circumvention
 
 ### Built-in Protections
 
@@ -188,7 +250,7 @@ Users are responsible for complying with website Terms of Service.
 ```python
 from webc import web
 
-url = "https://en.wikipedia.org/wiki/Python_(programming_language)"
+url = "https://example.com"
 site = web[url]
 
 print("=== STRUCTURE ===")
@@ -197,8 +259,8 @@ print(f"Total Links: {len(site.structure.links)}")
 print(f"First 5 links: {site.structure.links[:5]}")
 
 print("\n--- Downloading Resources ---")
-site.structure.save_images(folder="python_images")
-site.structure.save_tables(folder="python_data")
+site.structure.save_images(folder="images")
+site.structure.save_tables(folder="data")
 
 print("\n=== QUERY ===")
 headings = site.query["h1, h2"]
@@ -208,22 +270,9 @@ for h in headings[:3]:
     print(f" - {h.get_text(strip=True)}")
 
 print("\n=== TASK ===")
-summary = site.task.summarize(max_chars=500)
+summary = site.task.summarize(max_chars=500, refine=True)
 print(summary)
 ```
-
----
-
-## Roadmap
-
-Planned future improvements:
-
-* Multi-domain support
-* Advanced rate limiting
-* Enhanced security layers
-* Plugin-based task extensions
-* Dataset export helpers
-* Cloud-safe scraping mode
 
 ---
 
@@ -232,3 +281,4 @@ Planned future improvements:
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for the full license text.
 
 © 2026 Ashwin Prasanth
+
