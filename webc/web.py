@@ -6,6 +6,7 @@ import csv
 import re
 import uuid
 from urllib.parse import urlparse, urljoin
+from .websoc import SocialView
 
 # =========================
 # Image Handling
@@ -17,13 +18,10 @@ class ImageCollection(list):
         self.session = session or requests.Session()
 
     def save_images(self, folder="images", overwrite=False, delay=0.5):
-        # SECURITY FIX: Path Traversal Protection
-        # We use os.path.basename to ensure the folder is just a folder name
         safe_folder = os.path.basename(folder)
         target_dir = os.path.join(os.getcwd(), safe_folder)
         os.makedirs(target_dir, exist_ok=True)
         
-        # SECURITY FIX: Limit number of downloads
         if len(self) > 50:
             print("⚠️ Too many images found. Limiting download to first 50 for safety.")
             download_list = self[:50]
@@ -62,8 +60,8 @@ class Web:
         self.session = requests.Session()
         machine_id = hex(uuid.getnode())[-6:]
         
-        # UPDATED: Version to dev release
-        version = "0.1.1.dev1"
+        # VERSION BUMP: 0.2.0 marks the Unlocked Release
+        version = "0.2.0"
         project_home = "https://github.com/ashtwin2win-Z/WebC"
         
         ua = f"WebC/{version} (User: {contact or 'Anonymous'}; ID:{machine_id}; +{project_home})"
@@ -73,27 +71,24 @@ class Web:
         })
 
     def _is_safe(self, url):
-        """Security Guard: Domain Locking & Protocol Enforcement."""
+        """Security Guard: Protocol Enforcement & SSRF Protection."""
         parsed = urlparse(url)
-        host = parsed.hostname or ""
+        host = (parsed.hostname or "").lower()
 
-        # 1. SECURITY: Wikipedia-Only Restriction
-        if not host.endswith(".wikipedia.org"):
-            raise PermissionError("WebC v0.1.1 is restricted to Wikipedia.org for security.")
-
-        # 2. SECURITY: HTTPS Enforcement
+        # 1. REMOVED: Wikipedia-Only Restriction is gone.
+        
+        # 2. SECURITY: HTTPS Enforcement (Crucial for public web)
         if parsed.scheme != "https":
-            raise PermissionError("Only HTTPS URLs are allowed for safety.")
+            raise PermissionError("WebC requires HTTPS for secure data transmission.")
 
-        # 3. SECURITY: SSRF Protection
-        private_ips = ["127.0.0.1", "localhost", "169.254.169.254", "0.0.0.0"]
-        if any(ip in host for ip in private_ips):
-            raise PermissionError(f"Security Block: Internal address {host} is restricted.")
+        # 3. SECURITY: SSRF Protection (Prevents hitting internal networks)
+        private_ips = ["127.0.0.1", "localhost", "169.254.169.254", "0.0.0.0", "::1"]
+        if any(ip in host for ip in private_ips) or host.startswith("192.168.") or host.startswith("10."):
+            raise PermissionError(f"Security Block: {host} is a private address and is restricted.")
             
         return True
 
     def __getitem__(self, url: str):
-        # This will now raise PermissionErrors if the check fails
         self._is_safe(url)
         return Resource(url, self.session)
 
@@ -107,6 +102,7 @@ class Resource:
         self.structure = StructuredView(self)
         self.query = QueryView(self)
         self.task = TaskView(self)
+        self.social = SocialView(self)
 
     @property
     def html(self):
@@ -116,7 +112,6 @@ class Resource:
                 response = self.session.get(self.url, timeout=15)
                 response.raise_for_status()
                 
-                # RAM Safety (15MB limit)
                 if len(response.content) > 15 * 1024 * 1024:
                     return ""
                 self._html = response.text
@@ -128,6 +123,7 @@ class Resource:
     @property
     def soup(self):
         return BeautifulSoup(self.html, "html.parser")
+    
 
 # =========================
 # Structured View
@@ -143,20 +139,16 @@ class StructuredView:
     
     @property
     def links(self):
-        """Extracts all unique hyperlinks from the page."""
-        # Find all <a> tags with an 'href' attribute
         tags = self.resource.soup.find_all("a", href=True)
         urls = []
         for tag in tags:
-            # Resolve relative links (like /wiki/Java) to full URLs
             full_url = urljoin(self.resource.url, tag['href'])
             urls.append(full_url)
-        
-        # Return unique links only, maintaining order
         return list(dict.fromkeys(urls))
 
     @property
     def images(self):
+        # Fallback for non-Wikipedia sites that don't use 'bodyContent'
         content = self.resource.soup.find(id="bodyContent") or self.resource.soup
         all_tags = content.find_all("img")
         
@@ -184,7 +176,11 @@ class StructuredView:
     @property
     def tables(self):
         extracted = []
-        for table in self.resource.soup.find_all("table", class_="wikitable"):
+        # Generalize: look for 'wikitable' first, then any standard 'table'
+        tables = self.resource.soup.find_all("table", class_="wikitable") or \
+                 self.resource.soup.find_all("table")
+
+        for table in tables:
             grid = {}
             for r_idx, row in enumerate(table.find_all('tr')):
                 cells = row.find_all(['td', 'th'])
@@ -214,7 +210,6 @@ class StructuredView:
         return extracted
 
     def save_tables(self, folder="tables"):
-        # SECURITY FIX: Path Traversal Protection
         safe_folder = os.path.basename(folder)
         target_dir = os.path.join(os.getcwd(), safe_folder)
         os.makedirs(target_dir, exist_ok=True)
@@ -222,7 +217,6 @@ class StructuredView:
         saved_paths = []
         for i, table_obj in enumerate(self.tables, 1):
             raw_name = table_obj["name"] or f"table_{i}"
-            # SECURITY: Remove special characters from filenames
             clean_name = re.sub(r'[^\w\-]', '_', raw_name)
             filename = os.path.join(target_dir, f"{clean_name}.csv")
             
@@ -230,10 +224,21 @@ class StructuredView:
                 with open(filename, 'w', newline='', encoding='utf-8') as f:
                     csv.writer(f).writerows(table_obj["data"])
                 saved_paths.append(filename)
-                print(f"Table Saved: {filename}")
             except Exception as e:
                 print(f"Error saving {filename}: {e}")
         return saved_paths
+    @property
+    def metadata(self):
+        """Mines OpenGraph, Twitter, and standard Meta tags for SocialView."""
+        meta_data = {}
+        tags = self.resource.soup.find_all("meta")
+        for tag in tags:
+            # Looks for 'property' (OG tags) or 'name' (Twitter/Standard tags)
+            key = tag.get("property") or tag.get("name")
+            value = tag.get("content")
+            if key and value:
+                meta_data[key] = value
+        return meta_data
 
 # =========================
 # Query View
@@ -246,20 +251,36 @@ class QueryView:
         return self.resource.soup.select(selector)
 
 class TaskView:
-    """Provides intent-driven actions like summarization."""
     def __init__(self, resource):
         self.resource = resource
 
-    def summarize(self, max_chars=500):
-        """Extracts text content and cleans it for a short summary."""
-        # Focus on paragraph tags for meaningful content
+    def summarize(self, max_chars=200, refine=True):
+        """
+        Extracts and cleans page content.
+        :param max_chars: Maximum length of the returned string.
+        :param refine: If True, removes citations [1], [edit] tags, and extra noise.
+        """
+        # 1. Extraction logic
         paragraphs = self.resource.soup.find_all('p')
         text = " ".join([p.get_text().strip() for p in paragraphs])
         
-        # Security/Cleanup: Remove citations like [1][2] and extra whitespace
-        text = re.sub(r'\[.*?\]', '', text)
-        text = re.sub(r'\s+', ' ', text)
-        
-        if len(text) > max_chars:
-            return text[:max_chars].strip() + "..."
-        return text.strip()
+        # Fallback to social description if body text is empty
+        if not text or len(text) < 20:
+            text = self.resource.social.preview.get("description") or ""
+
+        # 2. Refinement Layer (Optional)
+        if refine:
+            # Remove Wikipedia-style citations [1], [23], etc.
+            text = re.sub(r'\[\d+\]', '', text)
+            # Remove "[edit]" and bracketed noise
+            text = re.sub(r'\[edit\]|\[.*?\]', '', text)
+            # Standardize whitespace
+            text = re.sub(r'\s+', ' ', text).strip()
+
+        # 3. Truncation
+        if len(text) <= max_chars:
+            return text
+            
+        # Cut at last space to avoid breaking words
+        truncated = text[:max_chars].rsplit(' ', 1)[0]
+        return f"{truncated.rstrip(',;:-—')}..."
