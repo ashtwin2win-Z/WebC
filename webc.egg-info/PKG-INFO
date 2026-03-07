@@ -1,8 +1,8 @@
 Metadata-Version: 2.4
 Name: webc
-Version: 0.2.0
+Version: 0.2.1
 Summary: Treat websites as programmable Python objects with specialized social intelligence.
-Author: Ashwin Prasanth
+Author: Ashwin Prasanth, Sachin Prasanth
 License:                                  Apache License
                                    Version 2.0, January 2004
                                 http://www.apache.org/licenses/
@@ -226,6 +226,8 @@ License-File: LICENSE
 License-File: NOTICE
 Requires-Dist: requests>=2.28.0
 Requires-Dist: beautifulsoup4>=4.11.0
+Requires-Dist: playwright>=1.30.0
+Requires-Dist: playwright-stealth>=1.0.5
 Dynamic: license-file
 
 <h1 align="center"> WebC – Treat Websites as Python Objects</h1>
@@ -234,10 +236,15 @@ Dynamic: license-file
 <img src="https://github.com/ashtwin2win-Z/WebC/raw/main/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
-**Version:** 0.2.0
-**Author:** Ashwin Prasanth
+**Version:** 0.2.1
+**Author:** Ashwin Prasanth and Sachin Prasanth
 
 ---
+## 🚀 Update v0.2.1
+* **Improved accessibility**
+* **Intelligent Data Refiner:** Updated StructuredView and TaskView to automatically filter out UI noise, navigation links, and "ghost" headers for a cleaner data output.
+* **WebSoc Normalization:** Enhanced the social intelligence layer to repair text encoding and strip promotional noise, ensuring social previews are clean and human-readable.
+* **Unified Metadata Support:** Improved cross-platform reliability for metadata extraction, ensuring consistent previews regardless of the site's structure.
 
 ## Overview
 
@@ -253,9 +260,9 @@ The goal is simple:
 
 ---
 
-## 🚀 New Release – v0.2.0 (The Unlocked Release)
+## 🚀 Release – v0.2.0 (The Unlocked Release)
 
-WebC v0.2.0 marks a major architectural milestone.
+WebC v0.2.0 onwards marks a major architectural milestone.
 
 ### Global Access
 
