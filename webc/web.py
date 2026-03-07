@@ -78,11 +78,24 @@ class Web:
         version = "0.2.0"
         project_home = "https://github.com/ashtwin2win-Z/WebC"
         
-        ua = f"WebC/{version} (User: {contact or 'Anonymous'}; ID:{machine_id}; +{project_home})"
         self.session.headers.update({
-            "User-Agent": ua,
-            "Accept-Encoding": "gzip"
-        })
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        # Preserved for internal tracking/logging purposes
+        "X-WebC-Agent": f"WebC/{version} (User: {contact or 'Anonymous'}; ID:{machine_id}; +{project_home})",
+    })
 
     def _is_safe(self, url):
         """Security Guard: Protocol Enforcement & SSRF Protection."""
@@ -122,17 +135,38 @@ class Resource:
     def html(self):
         if self._html is None:
             try:
-                time.sleep(1.0) 
-                response = self.session.get(self.url, timeout=15)
+                time.sleep(1.0)
+                response = self.session.get(
+                self.url,
+                timeout=15,
+                headers={"Referer": "https://www.google.com/"}
+            )
                 response.raise_for_status()
-                
+
                 if len(response.content) > 15 * 1024 * 1024:
                     return ""
                 self._html = response.text
+
             except Exception as e:
-                print(f"Fetch failed: {e}")
-                return ""
+                print(f"requests failed ({e}), trying playwright fallback...")
+                self._html = self._fetch_with_playwright()
         return self._html
+    
+    def _fetch_with_playwright(self):
+        try:
+            from playwright.sync_api import sync_playwright
+            from playwright_stealth import Stealth
+            with Stealth().use_sync(sync_playwright()) as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(self.url, wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_timeout(3000)
+                content = page.content()
+                browser.close()
+                return content
+        except Exception as e:
+            print(f"Playwright fallback also failed: {e}")
+            return ""
 
     @property
     def soup(self):

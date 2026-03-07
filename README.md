@@ -4,10 +4,15 @@
 <img src="https://github.com/ashtwin2win-Z/WebC/raw/main/assets/webc.png" alt="WebC Logo" width="280">
 </p>
 
-**Version:** 0.2.0
-**Author:** Ashwin Prasanth
+**Version:** 0.2.1
+**Author:** Ashwin Prasanth and Sachin Prasanth
 
 ---
+## 🚀 Update v0.2.1
+* **Improved accessibility**
+* **Intelligent Data Refiner:** Updated StructuredView and TaskView to automatically filter out UI noise, navigation links, and "ghost" headers for a cleaner data output.
+* **WebSoc Normalization:** Enhanced the social intelligence layer to repair text encoding and strip promotional noise, ensuring social previews are clean and human-readable.
+* **Unified Metadata Support:** Improved cross-platform reliability for metadata extraction, ensuring consistent previews regardless of the site's structure.
 
 ## Overview
 
@@ -23,9 +28,9 @@ The goal is simple:
 
 ---
 
-## 🚀 New Release – v0.2.0 (The Unlocked Release)
+## 🚀 Release – v0.2.0 (The Unlocked Release)
 
-WebC v0.2.0 marks a major architectural milestone.
+WebC v0.2.0 onwards marks a major architectural milestone.
 
 ### Global Access
 
